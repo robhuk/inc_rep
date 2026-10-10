@@ -26,6 +26,11 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:800;font-size:1
 .checkgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.check{background:#f6f6f6;padding:9px;border-radius:8px}.check input{width:auto;margin-right:7px}
 @media(max-width:600px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.checkgrid{grid-template-columns:1fr}}
 footer{text-align:center;color:#777;font-size:10px;padding:20px}
+
+.person-row{border:1px solid #ddd;border-radius:10px;padding:12px;margin:8px 0;background:#fafafa}
+.person-row-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;font-weight:800;color:var(--xc)}
+.person-row-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.person-row-grid{grid-template-columns:1fr}}
 </style>
 <link rel="apple-touch-icon" sizes="192x192" href="assets/icon-192.png">
 </head>
@@ -58,11 +63,12 @@ footer{text-align:center;color:#777;font-size:10px;padding:20px}
 </div></details>
 
 <details class="card"><summary>3. People involved</summary><div class="cardbody">
-<div class="grid">
-<div><label>Person / role</label><input id="person" placeholder="e.g. passenger, dispatcher, driver"></div>
-<div><label>Number of people involved</label><input id="people" type="number" min="0" placeholder="1"></div>
-<div class="full"><label>What did the person(s) say?</label><textarea id="speech" placeholder='Use the exact words where possible. Example: Passenger stated, "..."'></textarea></div>
-<div class="full"><label>Witnesses / other staff</label><textarea id="witnesses" placeholder="Names, roles or descriptions if known..."></textarea></div>
+<p class="small">Add a separate entry for each person involved. Leave this section empty if it is not relevant.</p>
+<div id="peopleRows"></div>
+<div class="actions" style="margin-top:10px"><button type="button" class="secondary" onclick="addPerson()">＋ Add person</button></div>
+<div class="grid" style="margin-top:12px">
+<div class="full"><label>What did the person(s) say?</label><textarea id="speech" placeholder='Use exact words where possible, e.g. Passenger stated, "..."'></textarea></div>
+<div class="full"><label>Witnesses / other staff (additional details)</label><textarea id="witnesses" placeholder="Names, roles or descriptions if known..."></textarea></div>
 </div>
 </div></details>
 
@@ -111,15 +117,47 @@ footer{text-align:center;color:#777;font-size:10px;padding:20px}
 const $=id=>document.getElementById(id);
 const val=id=>(($(id)?.value)||"").trim();
 const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
-const FIELD_IDS=["date","time","headcode","turn","service","location","coach","bwv","activity","events","action","outcome","person","people","speech","witnesses","threat","harm","risk","investigation","vulnerability","injury","bwvused","police","control","evidence"];
+const FIELD_IDS=["date","time","headcode","turn","service","location","coach","bwv","activity","events","action","outcome","speech","witnesses","threat","harm","risk","investigation","vulnerability","injury","bwvused","police","control","evidence"];
 const DRAFT_KEY="xcIncidentDraftV2", ARCHIVE_KEY="xcIncidentArchiveV2";
 $("date").value=new Date().toISOString().slice(0,10);
 $("headcode").addEventListener("input",e=>e.target.value=e.target.value.toUpperCase().replace(/[^0-9A-Z]/g,"").slice(0,4));
 function dateUK(x){if(!x)return "";let [y,m,d]=x.split("-");return `${d}/${m}/${y}`}
-function collectForm(){const data={};FIELD_IDS.forEach(id=>{const el=$(id);if(el)data[id]=el.type==="checkbox"?el.checked:el.value});data.statement=$("statement").textContent;return data}
-function applyForm(data){FIELD_IDS.forEach(id=>{const el=$(id);if(!el||data[id]===undefined)return;if(el.type==="checkbox")el.checked=!!data[id];else el.value=data[id]});$("statement").textContent=data.statement||"Your completed statement will appear here."}
+let personCounter=0;
+function addPerson(data={}){
+ const wrap=$("peopleRows"), row=document.createElement("div");personCounter++;
+ row.className="person-row";
+ const head=document.createElement("div");head.className="person-row-head";
+ const title=document.createElement("span");title.textContent=`Person ${wrap.children.length+1}`;
+ const remove=document.createElement("button");remove.type="button";remove.className="danger";remove.textContent="Remove";
+ remove.onclick=()=>{row.remove();renumberPeople();scheduleDraftSave()};
+ head.append(title,remove);
+ const grid=document.createElement("div");grid.className="person-row-grid";
+ const nb=document.createElement("div"), nl=document.createElement("label"), name=document.createElement("input");
+ nl.textContent="Name (if known)";name.placeholder="Name (if known)";name.value=data.name||"";name.dataset.personField="name";nb.append(nl,name);
+ const rb=document.createElement("div"), rl=document.createElement("label"), role=document.createElement("input");
+ rl.textContent="Role / Grade / Other";role.placeholder="Enter role, grade or other";role.value=data.role||"";role.dataset.personField="role";rb.append(rl,role);
+ grid.append(nb,rb);
+ const staffWrap=document.createElement("div");staffWrap.style.marginTop="10px";
+ const staffLabel=document.createElement("label");staffLabel.className="check";
+ const staff=document.createElement("input");staff.type="checkbox";staff.dataset.personField="railwayStaff";staff.checked=!!data.railwayStaff;
+ staffLabel.append(staff,document.createTextNode("Railway Staff"));staffWrap.append(staffLabel);
+ const extra=document.createElement("div");extra.className="person-row-grid";extra.style.marginTop="10px";extra.hidden=!staff.checked;
+ const companyBox=document.createElement("div"), companyLabel=document.createElement("label"), company=document.createElement("input");
+ companyLabel.textContent="Company";company.placeholder="e.g. CrossCountry";company.value=data.company||"";company.dataset.personField="company";companyBox.append(companyLabel,company);
+ const locationBox=document.createElement("div"), locationLabel=document.createElement("label"), location=document.createElement("input");
+ locationLabel.textContent="Location Based";location.placeholder="Depot, station or work location";location.value=data.locationBased||"";location.dataset.personField="locationBased";locationBox.append(locationLabel,location);
+ extra.append(companyBox,locationBox);
+ staff.addEventListener("change",()=>{extra.hidden=!staff.checked;scheduleDraftSave()});
+ [name,role,company,location].forEach(el=>{el.addEventListener("input",scheduleDraftSave);el.addEventListener("change",scheduleDraftSave)});
+ row.append(head,grid,staffWrap,extra);wrap.append(row);renumberPeople();
+}
+function renumberPeople(){[...$("peopleRows").children].forEach((row,i)=>{const s=row.querySelector(".person-row-head span");if(s)s.textContent=`Person ${i+1}`})}
+function getPeople(){return [...$("peopleRows").children].map(row=>({name:row.querySelector('[data-person-field="name"]').value.trim(),role:row.querySelector('[data-person-field="role"]').value.trim(),railwayStaff:row.querySelector('[data-person-field="railwayStaff"]').checked,company:row.querySelector('[data-person-field="company"]').value.trim(),locationBased:row.querySelector('[data-person-field="locationBased"]').value.trim()})).filter(p=>p.name||p.role||p.railwayStaff||p.company||p.locationBased)}
+function setPeople(people=[]){$("peopleRows").innerHTML="";personCounter=0;people.forEach(p=>addPerson(p))}
+function collectForm(){const data={};FIELD_IDS.forEach(id=>{const el=$(id);if(el)data[id]=el.type==="checkbox"?el.checked:el.value});data.people=getPeople();data.statement=$("statement").textContent;return data}
+function applyForm(data){FIELD_IDS.forEach(id=>{const el=$(id);if(!el||data[id]===undefined)return;if(el.type==="checkbox")el.checked=!!data[id];else el.value=data[id]});setPeople(Array.isArray(data.people)?data.people:((data.person)?[{name:data.person,role:""}]:[]));$("statement").textContent=data.statement||"Your completed statement will appear here."}
 function generate(){
- const d=dateUK(val("date")),t=val("time"),hc=val("headcode").toUpperCase(),service=val("service"),loc=val("location"),turn=val("turn"),activity=val("activity"),events=val("events"),action=val("action"),outcome=val("outcome"),person=val("person"),speech=val("speech"),witnesses=val("witnesses"),injury=val("injury"),evidence=val("evidence"),p=[];
+ const d=dateUK(val("date")),t=val("time"),hc=val("headcode").toUpperCase(),service=val("service"),loc=val("location"),turn=val("turn"),activity=val("activity"),events=val("events"),action=val("action"),outcome=val("outcome"),speech=val("speech"),witnesses=val("witnesses"),injury=val("injury"),evidence=val("evidence"),p=[];
  let opening="";if(d)opening+=`On ${d}`;if(t)opening+=`${opening?" at":"At"} approximately ${t}`;
  if(activity)opening+=`${opening?" I was":"I was"} ${activity}`;
  if(service)opening+=`${opening?" on the":"On the"} ${service}`;
@@ -128,7 +166,17 @@ function generate(){
  if(opening)p.push(opening+".");
  if(loc||val("coach"))p.push(`The incident occurred${loc?` at ${loc}`:""}${loc&&val("coach")?", ":""}${val("coach")?`in/at ${val("coach")}`:""}.`);
  if(events)p.push(cap(events).replace(/[. ]+$/,"")+".");
- if(person)p.push(`The person involved was described as ${person.replace(/[. ]+$/,"")}.`);
+ const involved=getPeople();
+ if(involved.length){
+   const peopleText=involved.map(x=>{
+     const details=[x.name,x.role].filter(Boolean);
+     if(x.railwayStaff)details.push("Railway Staff");
+     if(x.company)details.push(`Company: ${x.company}`);
+     if(x.locationBased)details.push(`Location based: ${x.locationBased}`);
+     return details.join(", ");
+   }).filter(Boolean).join("; ");
+   if(peopleText)p.push("The people involved were: "+peopleText+".");
+ }
  if(speech)p.push(`The following was said: "${speech.replace(/^["']|["']$/g,"").replace(/[. ]+$/,"")}."`);
  if(action)p.push(`I took the following action: ${cap(action).replace(/[. ]+$/,"")}.`);
  if($("bwvused").checked||val("bwv"))p.push(`A body worn video camera was used to capture information during this incident${val("bwv")?`. This was camera ${val("bwv")}, which is docked and booked out of NEWCASTLE depot`:""}.`);
@@ -152,7 +200,7 @@ function deleteSaved(id){if(!confirm("Delete this locally saved item?"))return;i
 function copyStatement(){const text=$("statement").textContent.includes("will appear")?generate():$("statement").textContent;if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(()=>alert("Statement copied to clipboard.")).catch(()=>prompt("Copy your statement:",text));else prompt("Copy your statement:",text)}
 function emailReport(){const statement=generate(),subject=encodeURIComponent(`Operational Incident Report - ${val("headcode")||"Incident"} - ${dateUK(val("date"))}`);location.href=`mailto:?subject=${subject}&body=${encodeURIComponent(statement)}`}
 function clearForm(){if(!confirm("Clear the current form? Saved drafts and archived reports will remain."))return;document.querySelectorAll("input,textarea").forEach(e=>{if(e.type==="checkbox")e.checked=false;else if(e.id!=="date")e.value=""});$("date").value=new Date().toISOString().slice(0,10);$("statement").textContent="Your completed statement will appear here."}
-let autosaveTimer;document.addEventListener("input",e=>{if(e.target.matches("input,textarea,select")){clearTimeout(autosaveTimer);autosaveTimer=setTimeout(()=>{const data=collectForm();data.savedAt=new Date().toISOString();data.kind="draft";data.title="Draft in progress";localStorage.setItem(DRAFT_KEY,JSON.stringify(data));renderArchive()},500)}});
+let autosaveTimer;function scheduleDraftSave(){clearTimeout(autosaveTimer);autosaveTimer=setTimeout(()=>{const data=collectForm();data.savedAt=new Date().toISOString();data.kind="draft";data.title="Draft in progress";localStorage.setItem(DRAFT_KEY,JSON.stringify(data));renderArchive()},500)}document.addEventListener("input",e=>{if(e.target.matches("input,textarea,select"))scheduleDraftSave()});
 document.addEventListener("change",e=>{if(e.target.matches('input[type="checkbox"],select')){const data=collectForm();data.savedAt=new Date().toISOString();data.kind="draft";data.title="Draft in progress";localStorage.setItem(DRAFT_KEY,JSON.stringify(data));renderArchive()}});
 try{const draft=JSON.parse(localStorage.getItem(DRAFT_KEY)||"null");if(draft)applyForm(draft)}catch(e){}
 renderArchive();if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
