@@ -1,11 +1,11 @@
 {
   "name": "XC Op Report Generator",
   "short_name": "Op Report",
-  "start_url": "./",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f2f3f5",
   "theme_color": "#A50034",
-  "description": "CrossCountry operational incident report generator",
+  "description": "CrossCountry operational incident report generator with local drafts and archive.",
   "icons": [
     {
       "src": "assets/icon-192.png",
@@ -25,5 +25,8 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "id": "./",
+  "scope": "./",
+  "orientation": "portrait"
 }

@@ -35,7 +35,7 @@ footer{text-align:center;color:#777;font-size:10px;padding:20px}
 <link rel="apple-touch-icon" sizes="192x192" href="assets/icon-192.png">
 </head>
 <body>
-<header><div class="headerrow"><div><div class="brand">XC STAFF APP</div><div class="subtitle">Operational Incident Statement Builder</div></div><div class="logo">XC</div></div></header>
+<header><div class="headerrow"><div><div class="brand">XC STAFF APP</div><div class="subtitle">Operational Incident Statement Builder</div></div><div style="display:flex;align-items:center;gap:8px"><button id="installAppBtn" type="button" class="primary" style="display:none;padding:9px 10px;font-size:12px">Install App</button><div class="logo">XC</div></div></div></header>
 
 <main>
 <div class="notice">Complete the factual fields below. The app converts your notes into a structured, professional operational incident statement. Review the generated statement before submission.</div>
@@ -204,5 +204,30 @@ let autosaveTimer;function scheduleDraftSave(){clearTimeout(autosaveTimer);autos
 document.addEventListener("change",e=>{if(e.target.matches('input[type="checkbox"],select')){const data=collectForm();data.savedAt=new Date().toISOString();data.kind="draft";data.title="Draft in progress";localStorage.setItem(DRAFT_KEY,JSON.stringify(data));renderArchive()}});
 try{const draft=JSON.parse(localStorage.getItem(DRAFT_KEY)||"null");if(draft)applyForm(draft)}catch(e){}
 renderArchive();if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
+</script>
+
+<script>
+let deferredInstallPrompt=null;
+const installButton=document.getElementById("installAppBtn");
+window.addEventListener("beforeinstallprompt",event=>{
+  event.preventDefault();
+  deferredInstallPrompt=event;
+  if(installButton)installButton.style.display="inline-block";
+});
+if(installButton){
+ installButton.addEventListener("click",async()=>{
+   if(deferredInstallPrompt){
+     deferredInstallPrompt.prompt();
+     await deferredInstallPrompt.userChoice;
+     deferredInstallPrompt=null;
+     installButton.style.display="none";
+   }else{
+     alert("To install: on iPhone, open this page in Safari, tap Share, then Add to Home Screen. On Android, use the browser menu and choose Install app or Add to Home screen.");
+   }
+ });
+}
+window.addEventListener("appinstalled",()=>{
+ if(installButton)installButton.style.display="none";
+});
 </script>
 </body></html>
