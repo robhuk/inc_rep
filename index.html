@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#A50034">
+<link rel="manifest" href="manifest.json">
+<title>XC Staff App – Operational Incident</title>
+<style>
+:root{--xc:#A50034;--gold:#f4c400;--bg:#f2f3f5;--ink:#222;--muted:#666;--card:#fff}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:var(--ink)}
+header{background:var(--xc);color:white;padding:calc(env(safe-area-inset-top) + 14px) 16px 14px;position:sticky;top:0;z-index:5;box-shadow:0 2px 7px #0003}
+.headerrow{display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{font-weight:800;font-size:19px}.subtitle{font-size:12px;opacity:.85;margin-top:2px}
+.logo{width:48px;height:48px;border-radius:12px;background:#fff;color:var(--xc);display:grid;place-items:center;font-weight:900;font-size:17px}
+main{max-width:850px;margin:auto;padding:14px 12px 80px}.card{background:var(--card);border-radius:15px;margin:12px 0;box-shadow:0 1px 5px #0001;overflow:hidden}.card summary{list-style:none;cursor:pointer;padding:16px;color:var(--xc);font-size:17px;font-weight:800}.card summary::-webkit-details-marker{display:none}.card summary:after{content:"＋";float:right;font-size:20px}.card[open] summary:after{content:"−"}.cardbody{padding:0 16px 16px}
+h2{font-size:17px;margin:0 0 12px;color:var(--xc)} h3{font-size:14px;margin:14px 0 8px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.full{grid-column:1/-1}
+label{display:block;font-size:12px;font-weight:700;margin-bottom:5px;color:#444}
+input,select,textarea{width:100%;border:1px solid #ccd0d5;border-radius:9px;padding:11px;font:inherit;background:#fff}
+textarea{min-height:95px;resize:vertical}.small{font-size:11px;color:var(--muted);margin-top:4px}
+button{border:0;border-radius:10px;padding:12px 14px;font-weight:800;font-size:14px;cursor:pointer}
+.primary{background:var(--gold);color:#111}.secondary{background:#eee;color:#222}.danger{background:#8d002d;color:#fff}
+.actions{display:flex;flex-wrap:wrap;gap:8px}.actions button{flex:1;min-width:130px}
+.statement{white-space:pre-wrap;line-height:1.55;font-size:14px;background:#fafafa;border-left:4px solid var(--xc);padding:13px;border-radius:8px}
+.notice{background:#fff5cc;border:1px solid #e5c84c;padding:10px;border-radius:9px;font-size:12px}
+.checkgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.check{background:#f6f6f6;padding:9px;border-radius:8px}.check input{width:auto;margin-right:7px}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.checkgrid{grid-template-columns:1fr}}
+footer{text-align:center;color:#777;font-size:10px;padding:20px}
+</style>
+<link rel="apple-touch-icon" sizes="192x192" href="assets/icon-192.png">
+</head>
+<body>
+<header><div class="headerrow"><div><div class="brand">XC STAFF APP</div><div class="subtitle">Operational Incident Statement Builder</div></div><div class="logo">XC</div></div></header>
+
+<main>
+<div class="notice">Complete the factual fields below. The app converts your notes into a structured, professional operational incident statement. Review the generated statement before submission.</div>
+
+<details class="card" open><summary>1. Incident &amp; service details</summary><div class="cardbody">
+<div class="grid">
+<div><label>Date</label><input id="date" type="date"></div>
+<div><label>Approximate time</label><input id="time" type="time"></div>
+<div><label>Headcode</label><input id="headcode" maxlength="4" placeholder="1V50"></div>
+<div><label>Train Manager Turn</label><input id="turn" placeholder="e.g. 12345"></div>
+<div><label>Service</label><input id="service" placeholder="e.g. 18:03 Newcastle to Birmingham"></div>
+<div><label>Location</label><input id="location" placeholder="e.g. Wakefield Westgate"></div>
+<div><label>Coach / vehicle</label><input id="coach" placeholder="e.g. Coach B"></div>
+<div><label>Body worn video camera</label><input id="bwv" placeholder="Camera number / N/A"></div>
+</div>
+</div></details>
+
+<details class="card"><summary>2. What happened?</summary><div class="cardbody">
+<div class="grid">
+<div class="full"><label>What were you doing immediately before the incident?</label><textarea id="activity" placeholder="Describe the activity in factual terms..."></textarea></div>
+<div class="full"><label>Describe what happened — include the sequence of events</label><textarea id="events" placeholder="Write your notes in your own words. Include what you saw, heard and did..."></textarea></div>
+<div class="full"><label>What action did you take?</label><textarea id="action" placeholder="e.g. stopped the dispatch, contacted the driver, spoke to the passenger..."></textarea></div>
+<div class="full"><label>What happened afterwards / outcome?</label><textarea id="outcome" placeholder="State the factual outcome, including whether anyone was injured or whether the service continued..."></textarea></div>
+</div>
+</div></details>
+
+<details class="card"><summary>3. People involved</summary><div class="cardbody">
+<div class="grid">
+<div><label>Person / role</label><input id="person" placeholder="e.g. passenger, dispatcher, driver"></div>
+<div><label>Number of people involved</label><input id="people" type="number" min="0" placeholder="1"></div>
+<div class="full"><label>What did the person(s) say?</label><textarea id="speech" placeholder='Use the exact words where possible. Example: Passenger stated, "..."'></textarea></div>
+<div class="full"><label>Witnesses / other staff</label><textarea id="witnesses" placeholder="Names, roles or descriptions if known..."></textarea></div>
+</div>
+</div></details>
+
+<details class="card"><summary>4. Risk &amp; THRIVE assessment</summary><div class="cardbody">
+<div class="grid">
+<div><label>Threat</label><textarea id="threat" placeholder="What threat was present?"></textarea></div>
+<div><label>Harm</label><textarea id="harm" placeholder="Actual or potential harm?"></textarea></div>
+<div><label>Risk</label><textarea id="risk" placeholder="What risk remained?"></textarea></div>
+<div><label>Investigation</label><textarea id="investigation" placeholder="What information/evidence is available?"></textarea></div>
+<div><label>Vulnerability</label><textarea id="vulnerability" placeholder="Any vulnerability relevant to the incident?"></textarea></div>
+<div><label>Injury / medical attention</label><textarea id="injury" placeholder="State none if applicable."></textarea></div>
+</div>
+</div></details>
+
+<details class="card"><summary>5. Evidence &amp; reporting</summary><div class="cardbody">
+<div class="checkgrid">
+<label class="check"><input type="checkbox" id="bwvused"> Body worn video used</label>
+<label class="check"><input type="checkbox" id="police"> Police involved / requested</label>
+<label class="check"><input type="checkbox" id="control"> Control / operations contacted</label>
+</div>
+<div style="margin-top:10px"><label>Additional evidence / references</label><textarea id="evidence" placeholder="CCTV, messages, reports, photographs, incident numbers, etc."></textarea></div>
+</div></details>
+
+<details class="card"><summary>6. Saved Reports Archive</summary><div class="cardbody">
+<p class="small">Drafts and archived reports are stored locally in this browser on this device. Select Open to continue editing or review a saved report.</p>
+<div id="archiveList"><p class="small">No saved reports yet.</p></div>
+</div></details>
+
+<section class="card">
+<h2>7. Generated statement</h2>
+<div id="statement" class="statement">Your completed statement will appear here.</div>
+<div class="actions" style="margin-top:12px">
+<button class="primary" onclick="generate()">Generate statement</button>
+<button class="secondary" onclick="copyStatement()">Copy</button>
+<button class="secondary" onclick="saveDraft()">Save draft</button>
+<button class="primary" onclick="archiveReport()">Archive report</button>
+<button class="secondary" onclick="window.print()">Print / PDF</button>
+<button class="secondary" onclick="emailReport()">Email</button>
+<button class="danger" onclick="clearForm()">Clear</button>
+</div>
+</section>
+<footer>Exported from “XC TM Staff App” • Operational Incident Statement Builder</footer>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const val=id=>(($(id)?.value)||"").trim();
+const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
+const FIELD_IDS=["date","time","headcode","turn","service","location","coach","bwv","activity","events","action","outcome","person","people","speech","witnesses","threat","harm","risk","investigation","vulnerability","injury","bwvused","police","control","evidence"];
+const DRAFT_KEY="xcIncidentDraftV2", ARCHIVE_KEY="xcIncidentArchiveV2";
+$("date").value=new Date().toISOString().slice(0,10);
+$("headcode").addEventListener("input",e=>e.target.value=e.target.value.toUpperCase().replace(/[^0-9A-Z]/g,"").slice(0,4));
+function dateUK(x){if(!x)return "";let [y,m,d]=x.split("-");return `${d}/${m}/${y}`}
+function collectForm(){const data={};FIELD_IDS.forEach(id=>{const el=$(id);if(el)data[id]=el.type==="checkbox"?el.checked:el.value});data.statement=$("statement").textContent;return data}
+function applyForm(data){FIELD_IDS.forEach(id=>{const el=$(id);if(!el||data[id]===undefined)return;if(el.type==="checkbox")el.checked=!!data[id];else el.value=data[id]});$("statement").textContent=data.statement||"Your completed statement will appear here."}
+function generate(){
+ const d=dateUK(val("date")),t=val("time"),hc=val("headcode").toUpperCase(),service=val("service"),loc=val("location"),turn=val("turn"),activity=val("activity"),events=val("events"),action=val("action"),outcome=val("outcome"),person=val("person"),speech=val("speech"),witnesses=val("witnesses"),injury=val("injury"),evidence=val("evidence"),p=[];
+ let opening="";if(d)opening+=`On ${d}`;if(t)opening+=`${opening?" at":"At"} approximately ${t}`;
+ if(activity)opening+=`${opening?" I was":"I was"} ${activity}`;
+ if(service)opening+=`${opening?" on the":"On the"} ${service}`;
+ if(hc)opening+=`${opening?" with the Headcode ":"The Headcode "}${hc}`;
+ if(turn)opening+=` as part of Train Manager Turn ${turn}`;
+ if(opening)p.push(opening+".");
+ if(loc||val("coach"))p.push(`The incident occurred${loc?` at ${loc}`:""}${loc&&val("coach")?", ":""}${val("coach")?`in/at ${val("coach")}`:""}.`);
+ if(events)p.push(cap(events).replace(/[. ]+$/,"")+".");
+ if(person)p.push(`The person involved was described as ${person.replace(/[. ]+$/,"")}.`);
+ if(speech)p.push(`The following was said: "${speech.replace(/^["']|["']$/g,"").replace(/[. ]+$/,"")}."`);
+ if(action)p.push(`I took the following action: ${cap(action).replace(/[. ]+$/,"")}.`);
+ if($("bwvused").checked||val("bwv"))p.push(`A body worn video camera was used to capture information during this incident${val("bwv")?`. This was camera ${val("bwv")}, which is docked and booked out of NEWCASTLE depot`:""}.`);
+ if($("police").checked)p.push("Police assistance was involved or requested in connection with the incident.");
+ if($("control").checked)p.push("I contacted Control / Operations and reported the circumstances.");
+ if(witnesses)p.push(`Witnesses / other staff: ${witnesses.replace(/[. ]+$/,"")}.`);
+ if(outcome)p.push(`Following my actions, the outcome was: ${cap(outcome).replace(/[. ]+$/,"")}.`);
+ if(injury)p.push(`Injury / medical attention: ${injury.replace(/[. ]+$/,"")}.`);
+ const thrive=[["Threat",val("threat")],["Harm",val("harm")],["Risk",val("risk")],["Investigation",val("investigation")],["Vulnerability",val("vulnerability")]].filter(x=>x[1]);
+ if(thrive.length)p.push(thrive.map(([k,v])=>`${k}: ${v.replace(/[. ]+$/,"")}`).join(". ")+".");
+ if(evidence)p.push(`Additional evidence / references: ${evidence.replace(/[. ]+$/,"")}.`);
+ if(p.length)p.push("I have recorded the above account as accurately and factually as possible.");
+ $("statement").textContent=p.length?p.join("\n\n"):"Enter incident details, then select Generate statement.";
+ localStorage.setItem("xcIncidentCurrent",$("statement").textContent);return $("statement").textContent;
+}
+function saveDraft(){const data=collectForm();data.savedAt=new Date().toISOString();data.kind="draft";data.title="Draft in progress";localStorage.setItem(DRAFT_KEY,JSON.stringify(data));renderArchive();alert("Draft saved on this device.")}
+function getArchive(){try{return JSON.parse(localStorage.getItem(ARCHIVE_KEY)||"[]")}catch(e){return []}}
+function archiveReport(){const statement=generate();if(!statement||statement==="Enter incident details, then select Generate statement."){alert("Enter some incident details before archiving.");return}const data=collectForm();data.id="report_"+Date.now();data.savedAt=new Date().toISOString();data.kind="archived";data.title=[val("headcode"),val("location"),dateUK(val("date"))].filter(Boolean).join(" • ")||"Operational incident report";const archive=getArchive();archive.unshift(data);localStorage.setItem(ARCHIVE_KEY,JSON.stringify(archive));localStorage.removeItem(DRAFT_KEY);renderArchive();alert("Report archived on this device.")}
+function renderArchive(){const box=$("archiveList");if(!box)return;const items=[];try{const draft=JSON.parse(localStorage.getItem(DRAFT_KEY)||"null");if(draft)items.push({...draft,id:"__draft",title:"Draft in progress",kind:"draft"})}catch(e){}getArchive().forEach(x=>items.push(x));box.innerHTML="";if(!items.length){box.innerHTML='<p class="small">No saved drafts or archived reports yet.</p>';return}items.forEach(item=>{const row=document.createElement("div");row.style.cssText="border:1px solid #ddd;border-radius:10px;padding:11px;margin:8px 0;background:#fafafa";const title=document.createElement("strong");title.textContent=item.title||"Operational incident report";const meta=document.createElement("div");meta.className="small";meta.textContent=(item.kind==="draft"?"Draft saved":"Archived report")+" • "+new Date(item.savedAt||Date.now()).toLocaleString();const actions=document.createElement("div");actions.className="actions";actions.style.marginTop="8px";const open=document.createElement("button");open.className="secondary";open.textContent="Open";open.onclick=()=>{applyForm(item);window.scrollTo({top:0,behavior:"smooth"});};const del=document.createElement("button");del.className="danger";del.textContent="Delete";del.onclick=()=>deleteSaved(item.id);actions.append(open,del);row.append(title,meta,actions);box.append(row)})}
+function deleteSaved(id){if(!confirm("Delete this locally saved item?"))return;if(id==="__draft")localStorage.removeItem(DRAFT_KEY);else localStorage.setItem(ARCHIVE_KEY,JSON.stringify(getArchive().filter(x=>x.id!==id)));renderArchive()}
+function copyStatement(){const text=$("statement").textContent.includes("will appear")?generate():$("statement").textContent;if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(()=>alert("Statement copied to clipboard.")).catch(()=>prompt("Copy your statement:",text));else prompt("Copy your statement:",text)}
+function emailReport(){const statement=generate(),subject=encodeURIComponent(`Operational Incident Report - ${val("headcode")||"Incident"} - ${dateUK(val("date"))}`);location.href=`mailto:?subject=${subject}&body=${encodeURIComponent(statement)}`}
+function clearForm(){if(!confirm("Clear the current form? Saved drafts and archived reports will remain."))return;document.querySelectorAll("input,textarea").forEach(e=>{if(e.type==="checkbox")e.checked=false;else if(e.id!=="date")e.value=""});$("date").value=new Date().toISOString().slice(0,10);$("statement").textContent="Your completed statement will appear here."}
+let autosaveTimer;document.addEventListener("input",e=>{if(e.target.matches("input,textarea,select")){clearTimeout(autosaveTimer);autosaveTimer=setTimeout(()=>{const data=collectForm();data.savedAt=new Date().toISOString();data.kind="draft";data.title="Draft in progress";localStorage.setItem(DRAFT_KEY,JSON.stringify(data));renderArchive()},500)}});
+document.addEventListener("change",e=>{if(e.target.matches('input[type="checkbox"],select')){const data=collectForm();data.savedAt=new Date().toISOString();data.kind="draft";data.title="Draft in progress";localStorage.setItem(DRAFT_KEY,JSON.stringify(data));renderArchive()}});
+try{const draft=JSON.parse(localStorage.getItem(DRAFT_KEY)||"null");if(draft)applyForm(draft)}catch(e){}
+renderArchive();if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
+</script>
+</body></html>
