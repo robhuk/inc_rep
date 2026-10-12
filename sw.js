@@ -1,5 +1,5 @@
 /* XC OP Report Generator — reliable offline app shell */
-const CACHE_NAME = "xc-op-report-generator-v3-mobile";
+const CACHE_NAME = "xc-op-report-generator-v4-ai-coherence";
 const APP_SHELL = ["./", "./index.html", "./manifest.json", "./icon.svg", "./icon-op-report-generator.png", "./assets/icon-192.png", "./assets/icon-512.png"];
 self.addEventListener("install", event => {
   event.waitUntil((async () => {

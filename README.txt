@@ -21,3 +21,6 @@ Drafts and archived reports are stored locally in that browser on that device an
 
 MOBILE LAYOUT UPDATE
 The interface is optimised for small screens, including single-column form fields, 44px touch targets, responsive action buttons, iOS safe-area spacing, and prevention of input zoom on iPhone. Cache version has been bumped to refresh existing installs. Open the hosted app online once to receive this update, then test in airplane mode.
+
+REPORT GENERATION AND COHERENCE REVIEW
+The report generator has been revised to build a continuous factual statement in a consistent witness-statement style, normalise punctuation, retain direct speech in quotation marks, omit empty fields, and preserve the preferred body-worn-video wording when a camera number is supplied. A local coherence check flags missing core details, invalid headcode format, placeholder text, repeated punctuation, unbalanced quotation marks, and potentially conflicting body-worn-video entries. It runs entirely on the device and sends no report details to an external AI service. It is a structure/consistency aid, not a factual verification or replacement for the Train Manager's review.

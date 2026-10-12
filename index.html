@@ -149,8 +149,10 @@ button{min-height:44px;touch-action:manipulation;}
 <section class="card">
 <h2>7. Generated statement</h2>
 <div id="statement" class="statement">Your completed statement will appear here.</div>
+<div id="coherenceResult" class="notice" style="margin-top:10px" aria-live="polite">Generate a statement, then run the coherence check before submitting.</div>
 <div class="actions" style="margin-top:12px">
 <button class="primary" onclick="generate()">Generate statement</button>
+<button class="secondary" onclick="checkCoherence()">Check coherence</button>
 <button class="secondary" onclick="copyStatement()">Copy</button>
 <button class="secondary" onclick="saveDraft()">Save draft</button>
 <button class="primary" onclick="archiveReport()">Archive report</button>
@@ -205,41 +207,79 @@ function getPeople(){return [...$("peopleRows").children].map(row=>({name:row.qu
 function setPeople(people=[]){$("peopleRows").innerHTML="";personCounter=0;people.forEach(p=>addPerson(p))}
 function collectForm(){const data={};FIELD_IDS.forEach(id=>{const el=$(id);if(el)data[id]=el.type==="checkbox"?el.checked:el.value});data.people=getPeople();data.statement=$("statement").textContent;return data}
 function applyForm(data){FIELD_IDS.forEach(id=>{const el=$(id);if(!el||data[id]===undefined)return;if(el.type==="checkbox")el.checked=!!data[id];else el.value=data[id]});setPeople(Array.isArray(data.people)?data.people:((data.person)?[{name:data.person,role:""}]:[]));$("statement").textContent=data.statement||"Your completed statement will appear here."}
+function cleanText(s){return (s||"").trim().replace(/\s+/g," ").replace(/[. ]+$/g,"")}
+function sentence(s){s=cleanText(s);if(!s)return "";return /[.!?\"]$/.test(s)?s:s+"."}
 function generate(){
- const d=dateUK(val("date")),t=val("time"),hc=val("headcode").toUpperCase(),service=val("service"),loc=val("location"),turn=val("turn"),activity=val("activity"),events=val("events"),action=val("action"),outcome=val("outcome"),speech=val("speech"),witnesses=val("witnesses"),injury=val("injury"),evidence=val("evidence"),p=[];
- let opening="";if(d)opening+=`On ${d}`;if(t)opening+=`${opening?" at":"At"} approximately ${t}`;
- if(activity)opening+=`${opening?" I was":"I was"} ${activity}`;
- if(service)opening+=`${opening?" on the":"On the"} ${service}`;
- if(hc)opening+=`${opening?" with the Headcode ":"The Headcode "}${hc}`;
- if(turn)opening+=` as part of Train Manager Turn ${turn}`;
- if(opening)p.push(opening+".");
- if(loc||val("coach"))p.push(`The incident occurred${loc?` at ${loc}`:""}${loc&&val("coach")?", ":""}${val("coach")?`in/at ${val("coach")}`:""}.`);
- if(events)p.push(cap(events).replace(/[. ]+$/,"")+".");
+ const d=dateUK(val("date")),t=val("time"),hc=val("headcode").toUpperCase(),service=val("service"),loc=val("location"),turn=val("turn"),activity=val("activity"),events=val("events"),action=val("action"),outcome=val("outcome"),speech=val("speech"),witnesses=val("witnesses"),injury=val("injury"),evidence=val("evidence"),coach=val("coach"),p=[];
+ // Build the opening in a consistent witness-statement style without inventing missing details.
+ let opening="";
+ if(d) opening=`On ${d}`;
+ if(t) opening+=`${opening?" at approximately ":"At approximately "}${t}`;
+ if(activity) opening+=`${opening?" I was carrying out ":"I was carrying out "}${cleanText(activity)}`;
+ if(service) opening+=`${opening?" on the ":"On the "}${cleanText(service)}`;
+ if(hc) opening+=`${opening?" with the Headcode ":"The Headcode "}${hc}`;
+ if(turn) opening+=`${opening?" as part of ":"As part of "}Train Manager Turn ${cleanText(turn)}`;
+ if(opening) p.push(sentence(opening));
+ if(loc||coach){let place="The incident occurred";if(loc)place+=` at ${cleanText(loc)}`;if(coach)place+=`${loc?", ":" "}${cleanText(coach)}`;p.push(sentence(place));}
+ if(events)p.push(sentence(cap(cleanText(events))));
  const involved=getPeople();
  if(involved.length){
    const peopleText=involved.map(x=>{
-     const details=[x.name,x.role].filter(Boolean);
-     if(x.railwayStaff)details.push("Railway Staff");
-     if(x.company)details.push(`Company: ${x.company}`);
-     if(x.locationBased)details.push(`Location based: ${x.locationBased}`);
+     const details=[];
+     if(x.name)details.push(cleanText(x.name));
+     if(x.role)details.push(cleanText(x.role));
+     else if(x.railwayStaff)details.push("Railway staff");
+     if(x.company)details.push(`Company: ${cleanText(x.company)}`);
+     if(x.locationBased)details.push(`Location based: ${cleanText(x.locationBased)}`);
      return details.join(", ");
    }).filter(Boolean).join("; ");
-   if(peopleText)p.push("The people involved were: "+peopleText+".");
+   if(peopleText)p.push(`The people involved were: ${peopleText}.`);
  }
- if(speech)p.push(`The following was said: "${speech.replace(/^["']|["']$/g,"").replace(/[. ]+$/,"")}."`);
- if(action)p.push(`I took the following action: ${cap(action).replace(/[. ]+$/,"")}.`);
- if($("bwvused").checked||val("bwv"))p.push(`A body worn video camera was used to capture information during this incident${val("bwv")?`. This was camera ${val("bwv")}, which is docked and booked out of NEWCASTLE depot`:""}.`);
+ if(speech){let quote=cleanText(speech).replace(/^['\"]+|['\"]+$/g,"");p.push(`The words I recall were: "${quote}".`)}
+ if(action)p.push(`I then took the following action: ${sentence(cap(cleanText(action)))}`);
+ if($("bwvused").checked||val("bwv")){
+   const cam=val("bwv");
+   if(cam && !/^n\/?a$/i.test(cam))p.push(`A body worn video camera was used to capture information during this incident. This was camera ${cleanText(cam)}, which is docked and booked out of NEWCASTLE depot.`);
+   else p.push("A body worn video camera was used to capture information during this incident.");
+ }
  if($("police").checked)p.push("Police assistance was involved or requested in connection with the incident.");
  if($("control").checked)p.push("I contacted Control / Operations and reported the circumstances.");
- if(witnesses)p.push(`Witnesses / other staff: ${witnesses.replace(/[. ]+$/,"")}.`);
- if(outcome)p.push(`Following my actions, the outcome was: ${cap(outcome).replace(/[. ]+$/,"")}.`);
- if(injury)p.push(`Injury / medical attention: ${injury.replace(/[. ]+$/,"")}.`);
- const thrive=[["Threat",val("threat")],["Harm",val("harm")],["Risk",val("risk")],["Investigation",val("investigation")],["Vulnerability",val("vulnerability")]].filter(x=>x[1]);
- if(thrive.length)p.push(thrive.map(([k,v])=>`${k}: ${v.replace(/[. ]+$/,"")}`).join(". ")+".");
- if(evidence)p.push(`Additional evidence / references: ${evidence.replace(/[. ]+$/,"")}.`);
- if(p.length)p.push("I have recorded the above account as accurately and factually as possible.");
- $("statement").textContent=p.length?p.join("\n\n"):"Enter incident details, then select Generate statement.";
- localStorage.setItem("xcIncidentCurrent",$("statement").textContent);return $("statement").textContent;
+ if(witnesses)p.push(`Witnesses / other staff were recorded as follows: ${sentence(cleanText(witnesses))}`);
+ if(outcome){const outcomeText=cleanText(outcome).replace(/^[Tt]he outcome was\s*:?\s*/,"").replace(/^[Ff]ollowing my actions,?\s*/,"");if(outcomeText)p.push(`Following my actions, ${sentence(outcomeText)}`);}
+ if(injury)p.push(`Injury / medical attention: ${sentence(cleanText(injury))}`);
+ const thrive=[["Threat",val("threat")],["Harm",val("harm")],["Risk",val("risk")],["Investigation",val("investigation")],["Vulnerability",val("vulnerability")]].filter(x=>cleanText(x[1]));
+ if(thrive.length)p.push("THRIVE assessment. "+thrive.map(([k,v])=>`${k}: ${sentence(cleanText(v))}`).join(" "));
+ if(evidence)p.push(`Additional evidence / references: ${sentence(cleanText(evidence))}`);
+ if(p.length)p.push("I have recorded this account as accurately and factually as possible.");
+ const result=p.length?p.join("\n\n"):"Enter incident details, then select Generate statement.";
+ $("statement").textContent=result;
+ localStorage.setItem("xcIncidentCurrent",result);
+ checkCoherence();
+ return result;
+}
+function checkCoherence(){
+ const text=$("statement").textContent;
+ const issues=[],notes=[];
+ if(!text||text==="Your completed statement will appear here."||text==="Enter incident details, then select Generate statement."){
+   $("coherenceResult").textContent="Generate a statement first. The check runs locally and does not send incident information anywhere.";return [];
+ }
+ if(!val("date"))issues.push("Date is missing.");
+ if(!val("time"))notes.push("Approximate time is missing; include it if known.");
+ if(!val("events"))issues.push("The sequence of events is missing.");
+ if(!val("action"))notes.push("No action taken is recorded; add it if relevant.");
+ if(!val("outcome"))notes.push("No outcome is recorded; add it if known.");
+ if(val("headcode")&&!/^\d[A-Z]\d\d$/.test(val("headcode").toUpperCase()))issues.push("Headcode should use the format 1V50 (number-letter-number-number).");
+ if(/\b(?:TBD|TODO|insert here|lorem ipsum)\b/i.test(text))issues.push("Placeholder wording remains in the statement.");
+ if(/\s{2,}/.test(text))notes.push("Check spacing in the generated statement.");
+ if(/\.\s*\./.test(text)||/,,|;;/.test(text))issues.push("Repeated punctuation detected.");
+ if((text.match(/"/g)||[]).length%2!==0)issues.push("Check the quotation marks around direct speech.");
+ if(/\b(?:I contacted Control \/ Operations|Police assistance was involved)\b/.test(text))notes.push("Confirm the police and Control statements accurately reflect what happened.");
+ if(val("bwv")&&/^n\/?a$/i.test(val("bwv"))&&$("bwvused").checked)notes.push("Camera field says N/A while body-worn video is ticked; verify this is intentional.");
+ const status=issues.length?`Needs review: ${issues.length} issue${issues.length===1?"":"s"}.`:(notes.length?"Coherence check complete — please review the notes below.":"Coherence check passed basic structure checks.");
+ const all=[status,...issues.map(x=>"• "+x),...notes.map(x=>"• "+x),"This is an offline rule-based check, not an external AI service. It checks structure and common consistency problems; it cannot verify whether the account is factually true."];
+ $("coherenceResult").textContent=all.join("\n");
+ $("coherenceResult").style.whiteSpace="pre-line";
+ return {issues,notes};
 }
 function saveDraft(){const data=collectForm();data.savedAt=new Date().toISOString();data.kind="draft";data.title="Draft in progress";localStorage.setItem(DRAFT_KEY,JSON.stringify(data));renderArchive();alert("Draft saved on this device.")}
 function getArchive(){try{return JSON.parse(localStorage.getItem(ARCHIVE_KEY)||"[]")}catch(e){return []}}
