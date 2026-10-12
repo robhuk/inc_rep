@@ -24,3 +24,14 @@ The interface is optimised for small screens, including single-column form field
 
 REPORT GENERATION AND COHERENCE REVIEW
 The report generator has been revised to build a continuous factual statement in a consistent witness-statement style, normalise punctuation, retain direct speech in quotation marks, omit empty fields, and preserve the preferred body-worn-video wording when a camera number is supplied. A local coherence check flags missing core details, invalid headcode format, placeholder text, repeated punctuation, unbalanced quotation marks, and potentially conflicting body-worn-video entries. It runs entirely on the device and sends no report details to an external AI service. It is a structure/consistency aid, not a factual verification or replacement for the Train Manager's review.
+
+REPORT OUTPUT PREFERENCE
+The generated narrative does not include a THRIVE heading or THRIVE assessment text. The assessment fields remain available in the form but are not copied into the generated report.
+
+
+REPORT TEMPLATE-BASED NARRATIVE AND OPTIONAL MISSING-DETAIL PROMPT
+The narrative follows the uploaded XC Report Writing Template: duty/service opening, working route and colleagues, train formation, the reporter's location, train status/location at the time, account of events, people involved, witnesses, body-worn video, service impact, and closing/outcome details. Empty information is omitted; the app does not invent facts.
+
+When Generate statement is selected, an inline mobile-friendly prompt lists details from the template that have not been supplied. Select “Add details & generate” to apply any entries, or “Dismiss without entry” to generate using only the existing information. Leaving a prompt field blank is allowed. Prompt answers are saved with local drafts and archived reports.
+
+The report output does not include a THRIVE assessment. The optional prompt is local to the device and does not use an external AI service.

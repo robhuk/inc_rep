@@ -78,6 +78,21 @@ button{min-height:44px;touch-action:manipulation;}
   header{position:relative;}
   main{padding-bottom:18px;}
 }
+
+/* Optional missing-information prompt */
+.modal-backdrop{position:fixed;inset:0;z-index:1000;background:rgba(12,12,12,.58);display:none;align-items:flex-end;justify-content:center;padding:12px}
+.modal-backdrop.open{display:flex}
+.modal-panel{background:#fff;width:min(100%,680px);max-height:88dvh;overflow:auto;border-radius:18px 18px 12px 12px;padding:18px;box-shadow:0 10px 40px #0005;padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+.modal-panel h2{margin:0 0 7px}
+.modal-panel p{font-size:13px;line-height:1.45;color:#555;margin:0 0 12px}
+.modal-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.modal-fields .modal-field.full{grid-column:1/-1}
+.modal-field label{margin-bottom:5px}
+.modal-field input,.modal-field textarea,.modal-field select{width:100%;font-size:16px}
+.modal-actions{display:flex;gap:8px;margin-top:14px;position:sticky;bottom:-1px;background:#fff;padding-top:10px}
+.modal-actions button{flex:1}
+@media(max-width:600px){.modal-backdrop{padding:0;align-items:flex-end}.modal-panel{width:100%;max-height:90dvh;border-radius:18px 18px 0 0;padding:16px 13px calc(14px + env(safe-area-inset-bottom))}.modal-fields{grid-template-columns:minmax(0,1fr)}.modal-fields .modal-field.full{grid-column:auto}.modal-actions{display:grid;grid-template-columns:1fr 1fr}.modal-actions button{min-width:0;padding:12px 8px}}
+
 @media print{header{position:static;}main{max-width:none;padding:0}.actions,#installAppBtn{display:none!important}}
 
 </style>
@@ -151,7 +166,7 @@ button{min-height:44px;touch-action:manipulation;}
 <div id="statement" class="statement">Your completed statement will appear here.</div>
 <div id="coherenceResult" class="notice" style="margin-top:10px" aria-live="polite">Generate a statement, then run the coherence check before submitting.</div>
 <div class="actions" style="margin-top:12px">
-<button class="primary" onclick="generate()">Generate statement</button>
+<button class="primary" onclick="generate(true)">Generate statement</button>
 <button class="secondary" onclick="checkCoherence()">Check coherence</button>
 <button class="secondary" onclick="copyStatement()">Copy</button>
 <button class="secondary" onclick="saveDraft()">Save draft</button>
@@ -161,6 +176,19 @@ button{min-height:44px;touch-action:manipulation;}
 <button class="danger" onclick="clearForm()">Clear</button>
 </div>
 </section>
+
+<div id="missingInfoModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="missingInfoTitle">
+ <div class="modal-panel">
+  <h2 id="missingInfoTitle">Complete report details?</h2>
+  <p>These details appear in the XC report-writing template but have not been entered. Add anything you know, or dismiss this prompt to generate the report using only the information already supplied. Blank answers will be omitted.</p>
+  <div id="missingInfoFields" class="modal-fields"></div>
+  <div class="modal-actions">
+   <button type="button" class="primary" onclick="submitMissingInfo()">Add details &amp; generate</button>
+   <button type="button" class="secondary" onclick="dismissMissingInfo()">Dismiss without entry</button>
+  </div>
+ </div>
+</div>
+
 <footer>Exported from “XC TM Staff App” • Operational Incident Statement Builder</footer>
 </main>
 
@@ -168,8 +196,27 @@ button{min-height:44px;touch-action:manipulation;}
 const $=id=>document.getElementById(id);
 const val=id=>(($(id)?.value)||"").trim();
 const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
-const FIELD_IDS=["date","time","headcode","turn","service","location","coach","bwv","activity","events","action","outcome","speech","witnesses","threat","harm","risk","investigation","vulnerability","injury","bwvused","police","control","evidence"];
+const FIELD_IDS=["date","time","headcode","turn","service","location","coach","bwv","activity","events","action","outcome","speech","witnesses","threat","harm","risk","investigation","vulnerability","injury","bwvused","police","control","evidence","startLocation","endLocation","colleagues","carriages","trainType","formation","position","trainStatus","observation","serviceImpact","closingRemarks","policeDetails","emergencyServices"];
 const DRAFT_KEY="xcIncidentDraftV2", ARCHIVE_KEY="xcIncidentArchiveV2";
+
+const EXTRA_FIELDS = [
+ {key:"startLocation",label:"Where did you start working this train?",placeholder:"Start location",section:"Journey details"},
+ {key:"endLocation",label:"Where were you due to finish working?",placeholder:"End location",section:"Journey details"},
+ {key:"colleagues",label:"Who were you working alongside?",placeholder:"Names, depot and grade/role",section:"People"},
+ {key:"carriages",label:"How many carriages formed the train?",placeholder:"Number of carriages",section:"Train formation"},
+ {key:"trainType",label:"What type of train was it?",placeholder:"Single / double Voyager or HST",section:"Train formation"},
+ {key:"formation",label:"What was the train formation?",placeholder:"Formation / unit details",section:"Train formation"},
+ {key:"position",label:"Where were you located at the time?",placeholder:"Your location on the train / platform",section:"Incident location"},
+ {key:"trainStatus",label:"Where was the train and what was it doing?",placeholder:"Station, platform or in-service journey",section:"Incident location"},
+ {key:"observation",label:"Observation / identification details (if relevant)",placeholder:"Time observed, distance, visibility, obstructions, familiarity and distinguishing features",section:"Observation"},
+ {key:"serviceImpact",label:"What was the service impact?",placeholder:"Delays, rescue pack, termination, diversion or stopping instructions",section:"Service impact"},
+ {key:"closingRemarks",label:"What happened after the incident?",placeholder:"Closing remarks / subsequent outcome",section:"Outcome"},
+ {key:"policeDetails",label:"Police attendance details (if applicable)",placeholder:"Name, rank, station, force and incident/crime number",section:"Emergency response"},
+ {key:"emergencyServices",label:"Other emergency services or Network Rail (if applicable)",placeholder:"Who attended and what they did",section:"Emergency response"}
+];
+let supplementalValues = {};
+let pendingGenerate = false;
+
 $("date").value=new Date().toISOString().slice(0,10);
 $("headcode").addEventListener("input",e=>e.target.value=e.target.value.toUpperCase().replace(/[^0-9A-Z]/g,"").slice(0,4));
 function dateUK(x){if(!x)return "";let [y,m,d]=x.split("-");return `${d}/${m}/${y}`}
@@ -205,11 +252,69 @@ function addPerson(data={}){
 function renumberPeople(){[...$("peopleRows").children].forEach((row,i)=>{const s=row.querySelector(".person-row-head span");if(s)s.textContent=`Person ${i+1}`})}
 function getPeople(){return [...$("peopleRows").children].map(row=>({name:row.querySelector('[data-person-field="name"]').value.trim(),role:row.querySelector('[data-person-field="role"]').value.trim(),railwayStaff:row.querySelector('[data-person-field="railwayStaff"]').checked,company:row.querySelector('[data-person-field="company"]').value.trim(),locationBased:row.querySelector('[data-person-field="locationBased"]').value.trim()})).filter(p=>p.name||p.role||p.railwayStaff||p.company||p.locationBased)}
 function setPeople(people=[]){$("peopleRows").innerHTML="";personCounter=0;people.forEach(p=>addPerson(p))}
-function collectForm(){const data={};FIELD_IDS.forEach(id=>{const el=$(id);if(el)data[id]=el.type==="checkbox"?el.checked:el.value});data.people=getPeople();data.statement=$("statement").textContent;return data}
-function applyForm(data){FIELD_IDS.forEach(id=>{const el=$(id);if(!el||data[id]===undefined)return;if(el.type==="checkbox")el.checked=!!data[id];else el.value=data[id]});setPeople(Array.isArray(data.people)?data.people:((data.person)?[{name:data.person,role:""}]:[]));$("statement").textContent=data.statement||"Your completed statement will appear here."}
+function collectForm(){const data={};FIELD_IDS.forEach(id=>{const el=$(id);if(el)data[id]=el.type==="checkbox"?el.checked:el.value});data.people=getPeople();data.extras={...supplementalValues};data.statement=$("statement").textContent;return data}
+function applyForm(data){FIELD_IDS.forEach(id=>{const el=$(id);if(!el||data[id]===undefined)return;if(el.type==="checkbox")el.checked=!!data[id];else el.value=data[id]});setPeople(Array.isArray(data.people)?data.people:((data.person)?[{name:data.person,role:""}]:[]));supplementalValues=data.extras&&typeof data.extras==="object"?{...data.extras}:{};$("statement").textContent=data.statement||"Your completed statement will appear here."}
 function cleanText(s){return (s||"").trim().replace(/\s+/g," ").replace(/[. ]+$/g,"")}
 function sentence(s){s=cleanText(s);if(!s)return "";return /[.!?\"]$/.test(s)?s:s+"."}
-function generate(){
+
+const PROMPT_BASE_FIELDS = [
+ {id:"date",label:"Incident date",placeholder:"DD/MM/YYYY",type:"text",full:false},
+ {id:"time",label:"Approximate incident time",placeholder:"HH:MM",type:"text",full:false},
+ {id:"headcode",label:"Headcode",placeholder:"e.g. 1V50",type:"text",full:false},
+ {id:"service",label:"Train time, origin and destination",placeholder:"e.g. 16:40 Newcastle to Birmingham",type:"text",full:true},
+ {id:"activity",label:"What were you doing immediately before?",placeholder:"Activity / assisting on / working the service",type:"textarea",full:true},
+ {id:"events",label:"What happened? (account of events)",placeholder:"Chronological factual account",type:"textarea",full:true},
+ {id:"action",label:"What action did you take?",placeholder:"Actions taken",type:"textarea",full:true},
+ {id:"outcome",label:"Outcome / what happened afterwards",placeholder:"Known outcome only",type:"textarea",full:true},
+ {id:"location",label:"Incident location",placeholder:"Station / location",type:"text",full:false},
+ {id:"coach",label:"Coach / vehicle",placeholder:"Coach or vehicle, if known",type:"text",full:false},
+ {id:"witnesses",label:"Witnesses / other staff details",placeholder:"Names and details if known",type:"textarea",full:true},
+ {id:"bwv",label:"Body-worn video camera number (if used)",placeholder:"Camera number or N/A",type:"text",full:false},
+ {id:"injury",label:"Injury / medical attention",placeholder:"Only if known / relevant",type:"textarea",full:true},
+ {id:"evidence",label:"Evidence / reference numbers",placeholder:"CCTV, incident references, photographs, etc.",type:"textarea",full:true}
+];
+function getMissingPromptFields(){
+ const missing=[];
+ PROMPT_BASE_FIELDS.forEach(f=>{const el=$(f.id);if(el&&!String(el.value||"").trim())missing.push({...f,kind:"base"})});
+ EXTRA_FIELDS.forEach(f=>{if(!String(supplementalValues[f.key]||"").trim())missing.push({...f,id:f.key,type: (["observation","serviceImpact","closingRemarks","policeDetails","emergencyServices","colleagues"].includes(f.key)?"textarea":"text"),full:true,kind:"extra"})});
+ // Don't ask for the camera number unless BWV is selected, and don't ask injury/evidence when the relevant report content is absent.
+ return missing.filter(f=>{
+   if(f.id==="bwv"&&!$("bwvused").checked)return false;
+   if(f.id==="injury"&&!val("events"))return false;
+   if(f.id==="evidence"&&!val("events"))return false;
+   return true;
+ });
+}
+function openMissingInfoModal(fields){
+ const container=$("missingInfoFields");container.innerHTML="";
+ fields.forEach((f,i)=>{
+   const wrap=document.createElement("div");wrap.className="modal-field"+(f.full?" full":"");
+   const label=document.createElement("label");label.htmlFor="missing_"+f.id;label.textContent=f.label;
+   let input;
+   if(f.type==="textarea"){input=document.createElement("textarea");input.rows=2;}
+   else {input=document.createElement("input");input.type="text";}
+   input.id="missing_"+f.id;input.placeholder=f.placeholder||"Enter details if known";input.dataset.kind=f.kind;input.dataset.target=f.id;
+   input.value=f.kind==="base"?(val(f.id)||""):(supplementalValues[f.id]||"");
+   wrap.append(label,input);container.append(wrap);
+ });
+ $("missingInfoModal").classList.add("open");
+ const first=container.querySelector("input,textarea");if(first)first.focus({preventScroll:true});
+}
+function closeMissingInfoModal(){$("missingInfoModal").classList.remove("open")}
+function submitMissingInfo(){
+ document.querySelectorAll("#missingInfoFields [data-target]").forEach(input=>{
+   const value=input.value.trim();if(!value)return;
+   if(input.dataset.kind==="base"){
+     const target=$(input.dataset.target);if(target){if(input.dataset.target==="date"&&/^\d{2}\/\d{2}\/\d{4}$/.test(value)){const [d,m,y]=value.split("/");target.value=`${y}-${m}-${d}`;}else target.value=value;}
+   }else supplementalValues[input.dataset.target]=value;
+ });
+ closeMissingInfoModal();scheduleDraftSave();generate(false);
+}
+function dismissMissingInfo(){closeMissingInfoModal();generate(false)}
+$("missingInfoModal").addEventListener("click",e=>{if(e.target===$("missingInfoModal"))dismissMissingInfo()});
+
+function generate(askForMissing=false){
+ if(askForMissing){const missing=getMissingPromptFields();if(missing.length){openMissingInfoModal(missing);return "";}}
  const d=dateUK(val("date")),t=val("time"),hc=val("headcode").toUpperCase(),service=val("service"),loc=val("location"),turn=val("turn"),activity=val("activity"),events=val("events"),action=val("action"),outcome=val("outcome"),speech=val("speech"),witnesses=val("witnesses"),injury=val("injury"),evidence=val("evidence"),coach=val("coach"),p=[];
  // Build the opening in a consistent witness-statement style without inventing missing details.
  let opening="";
@@ -220,6 +325,13 @@ function generate(){
  if(hc) opening+=`${opening?" with the Headcode ":"The Headcode "}${hc}`;
  if(turn) opening+=`${opening?" as part of ":"As part of "}Train Manager Turn ${cleanText(turn)}`;
  if(opening) p.push(sentence(opening));
+ const startLocation=supplementalValues.startLocation||"", endLocation=supplementalValues.endLocation||"";
+ if(startLocation||endLocation){let journey="I worked this train";if(startLocation)journey+=` from ${cleanText(startLocation)}`;if(endLocation)journey+=`${startLocation?" to ":" until "}${cleanText(endLocation)}`;p.push(sentence(journey));}
+ if(supplementalValues.colleagues)p.push(`I was working alongside ${sentence(cleanText(supplementalValues.colleagues))}`);
+ if(supplementalValues.carriages||supplementalValues.trainType){let formed="The train was formed of";if(supplementalValues.carriages)formed+=` ${cleanText(supplementalValues.carriages)} carriages`;if(supplementalValues.trainType)formed+=`${supplementalValues.carriages?", and was a ":" and was a "}${cleanText(supplementalValues.trainType)}`;p.push(sentence(formed));}
+ if(supplementalValues.formation)p.push(sentence(`The formation of the train was ${cleanText(supplementalValues.formation)}`));
+ if(supplementalValues.position)p.push(sentence(`I was located ${cleanText(supplementalValues.position)} at the time mentioned above`));
+ if(supplementalValues.trainStatus)p.push(sentence(`At the time of the incident, ${cleanText(supplementalValues.trainStatus)}`));
  if(loc||coach){let place="The incident occurred";if(loc)place+=` at ${cleanText(loc)}`;if(coach)place+=`${loc?", ":" "}${cleanText(coach)}`;p.push(sentence(place));}
  if(events)p.push(sentence(cap(cleanText(events))));
  const involved=getPeople();
@@ -246,9 +358,12 @@ function generate(){
  if($("control").checked)p.push("I contacted Control / Operations and reported the circumstances.");
  if(witnesses)p.push(`Witnesses / other staff were recorded as follows: ${sentence(cleanText(witnesses))}`);
  if(outcome){const outcomeText=cleanText(outcome).replace(/^[Tt]he outcome was\s*:?\s*/,"").replace(/^[Ff]ollowing my actions,?\s*/,"");if(outcomeText)p.push(`Following my actions, ${sentence(outcomeText)}`);}
+ if(supplementalValues.observation)p.push(sentence(`Regarding my observations of the person or incident, ${cleanText(supplementalValues.observation)}`));
  if(injury)p.push(`Injury / medical attention: ${sentence(cleanText(injury))}`);
- const thrive=[["Threat",val("threat")],["Harm",val("harm")],["Risk",val("risk")],["Investigation",val("investigation")],["Vulnerability",val("vulnerability")]].filter(x=>cleanText(x[1]));
- if(thrive.length)p.push("THRIVE assessment. "+thrive.map(([k,v])=>`${k}: ${sentence(cleanText(v))}`).join(" "));
+ if(supplementalValues.serviceImpact)p.push(sentence(`The service impact was as follows: ${cleanText(supplementalValues.serviceImpact)}`));
+ if(supplementalValues.closingRemarks)p.push(sentence(cleanText(supplementalValues.closingRemarks)));
+ if(supplementalValues.policeDetails)p.push(sentence(`Police attendance details: ${cleanText(supplementalValues.policeDetails)}`));
+ if(supplementalValues.emergencyServices)p.push(sentence(`Other emergency services / Network Rail: ${cleanText(supplementalValues.emergencyServices)}`));
  if(evidence)p.push(`Additional evidence / references: ${sentence(cleanText(evidence))}`);
  if(p.length)p.push("I have recorded this account as accurately and factually as possible.");
  const result=p.length?p.join("\n\n"):"Enter incident details, then select Generate statement.";
@@ -288,7 +403,7 @@ function renderArchive(){const box=$("archiveList");if(!box)return;const items=[
 function deleteSaved(id){if(!confirm("Delete this locally saved item?"))return;if(id==="__draft")localStorage.removeItem(DRAFT_KEY);else localStorage.setItem(ARCHIVE_KEY,JSON.stringify(getArchive().filter(x=>x.id!==id)));renderArchive()}
 function copyStatement(){const text=$("statement").textContent.includes("will appear")?generate():$("statement").textContent;if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(()=>alert("Statement copied to clipboard.")).catch(()=>prompt("Copy your statement:",text));else prompt("Copy your statement:",text)}
 function emailReport(){const statement=generate(),subject=encodeURIComponent(`Operational Incident Report - ${val("headcode")||"Incident"} - ${dateUK(val("date"))}`);location.href=`mailto:?subject=${subject}&body=${encodeURIComponent(statement)}`}
-function clearForm(){if(!confirm("Clear the current form? Saved drafts and archived reports will remain."))return;document.querySelectorAll("input,textarea").forEach(e=>{if(e.type==="checkbox")e.checked=false;else if(e.id!=="date")e.value=""});$("date").value=new Date().toISOString().slice(0,10);$("statement").textContent="Your completed statement will appear here."}
+function clearForm(){if(!confirm("Clear the current form? Saved drafts and archived reports will remain."))return;document.querySelectorAll("input,textarea").forEach(e=>{if(e.type==="checkbox")e.checked=false;else if(e.id!=="date")e.value=""});supplementalValues={};closeMissingInfoModal();$("date").value=new Date().toISOString().slice(0,10);$("statement").textContent="Your completed statement will appear here."}
 let autosaveTimer;function scheduleDraftSave(){clearTimeout(autosaveTimer);autosaveTimer=setTimeout(()=>{const data=collectForm();data.savedAt=new Date().toISOString();data.kind="draft";data.title="Draft in progress";localStorage.setItem(DRAFT_KEY,JSON.stringify(data));renderArchive()},500)}document.addEventListener("input",e=>{if(e.target.matches("input,textarea,select"))scheduleDraftSave()});
 document.addEventListener("change",e=>{if(e.target.matches('input[type="checkbox"],select')){const data=collectForm();data.savedAt=new Date().toISOString();data.kind="draft";data.title="Draft in progress";localStorage.setItem(DRAFT_KEY,JSON.stringify(data));renderArchive()}});
 try{const draft=JSON.parse(localStorage.getItem(DRAFT_KEY)||"null");if(draft)applyForm(draft)}catch(e){}
